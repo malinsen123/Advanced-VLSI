@@ -34,9 +34,9 @@ The goal was to design a 100-tap low-pass Finite Impulse Response (FIR) filter w
 
 Fig.1 and Fig.2 shows the FIR filter's pre-quantized and quantized response.
 
-![FIR Filter Frequency Response](./fig/Filter_response.fig)
+![FIR Filter Frequency Response](./fig/filter_response.jpg)
 Fig.1: Pre-quantized FIR filter frequency response
 
-![FIR Filter Frequency Response](./fig/Quantized_filter_response.fig)
+![FIR Filter Frequency Response](./fig/Quantized_filter.jpg)
 Fig.2: Quantized FIR filter frequency response
 
