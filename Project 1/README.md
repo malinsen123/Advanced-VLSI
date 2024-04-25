@@ -74,3 +74,5 @@ The pipelined implementation of the FIR filter is shown in the file `fir_filter_
 The ModelSim is used to simulate the filter. The simulation results are shown in Fig.6.
 
 ![Simulation Results](./fig/pipe_example.png)
+
+Fig.6: Simulation results of the pipelined FIR filter
