@@ -58,11 +58,19 @@ The last step in decoding BCH codes is to find the error location numbers. These
 
 As shown in the figure, the error locations are found using the Chien search algorithm, which evaluates the error locator polynomial σ(x) at the elements of GF(2^m) to determine the error locations. The algorithm will find and correct up to t errors in the received codeword, allowing for the recovery of the original message.
 
-### Encoder simulation
+### Encoder simulation and analysis
 
 ![Encoder Simulation](./encoder_example.png)
 
 As shown in the figure, to simplify the simulation, the encoder is tune to encode a (15, 7) BCH code. The input data is a 7-bit binary number, and the output is a 15-bit codeword. The encoder is tested using a testbench file that generates random input data and verifies the correctness of the encoded output. The simulation results demonstrate the successful encoding of the input data using the BCH code. As the information bits 0x48 are encoded to be 0x48f5.
 
 
-### Decoder simulation
+### Decoder simulation and analysis
+
+![Decoder Simulation](./decoder_example.png)
+
+As shown in the figure, to simplify the simulation, the decoder is tuned to decode a (15, 7) BCH code. The input data is a 15-bit codeword with up to 2 errors, and the output is the decoded 7-bit message. The decoder is tested using a testbench file that introduces random errors into the received codeword and verifies the correctness of the decoded output. The simulation results demonstrate the successful decoding of the received codeword, with the errors corrected to recover the original message. The simulation results demonstrate teh successful decoding of the received codeword 0x5c20 and after correcting the errors, the correct output codeword is 0x5c29 and as a result, 2 errors are corrected.
+
+## Conclusion
+
+The BCH encoder/decoder includes implementation of complex algorithm for both encoding and decoding. The theoritical encoder is designed to encode a 512-byte data block using a BCH code with the capability to correct up to 2 errors and in the simulation a (15,7) encoding result is shown for simplicity. The decoder is designed to decode the received codeword and correct up to 2 errors to recover the original message and the implementation of the decoder is much harder than the encoder. The simulation results demonstrate the successful encoding and decoding of BCH codes, highlighting the error-correcting capability of the codes. The project provides a comprehensive understanding of BCH codes and their applications in error correction, making them valuable tools in various communication and storage systems.

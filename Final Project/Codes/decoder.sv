@@ -1,5 +1,15 @@
 `include "helper.sv"
 
+parameter [`M-1:0] power [0:2**`M-1] = {
+    'h1, 'h2, 'h4, 'h8, 'h3, 'h6, 'hc, 'hb, 'h5, 'ha, 'h7, 'he, 'hf, 'hd, 'h9, 'h1 
+};
+parameter [`M-1:0] log   [0:2**`M-1] = {
+    'hf, 'h0, 'h1, 'h4, 'h2, 'h8, 'h5, 'ha, 'h3, 'he, 'h9, 'h7, 'h6, 'hd, 'hb, 'hc
+};
+
+
+
+
 module serial_syndrome_calculator(
 	output reg  data_out_valid,
 	output wire error_found,
@@ -33,8 +43,8 @@ module serial_syndrome_calculator(
 				// increment counter.
 				counter <= counter + 1;
 				// iteratively calculate syndrome
-				S_1 <= S_1 ^ (alpha.power[counter] & {4{rx_data_latch[counter]}});						// extend
-				S_3 <= S_3 ^ (alpha.power[field_modulo(3*counter)] & {4{rx_data_latch[counter]}});		// extend
+				S_1 <= S_1 ^ (power[counter] & {4{rx_data_latch[counter]}});						// extend
+				S_3 <= S_3 ^ (power[field_modulo(3*counter)] & {4{rx_data_latch[counter]}});		// extend
 			end
 
 			// data_out_valid handle 
@@ -64,8 +74,8 @@ module parallel_syndrome_calculator(
 		S_3_acc = 4'd0;
 
 		for(i=0; i<`N; i+=1) begin			
-			S_1_acc = S_1_acc ^ (alpha.power[i] & {4{rx_data[i]}});						// extend
-			S_3_acc = S_3_acc ^ (alpha.power[field_modulo(3*i)] & {4{rx_data[i]}});		// extend
+			S_1_acc = S_1_acc ^ (power[i] & {4{rx_data[i]}});						// extend
+			S_3_acc = S_3_acc ^ (power[field_modulo(3*i)] & {4{rx_data[i]}});		// extend
 		end
 	end
 
@@ -112,8 +122,8 @@ module error_corrector(
 	input  wire input_valid, error_found,
 	input  wire en, clk, reset
 );
-	wire [`M+1:0] log_S1 = alpha.log[S_1];							// extra bits to allow for 3x expansion
-	wire [`M-1:0] S_1_cube = alpha.power[field_modulo(3*log_S1)];
+	wire [`M+1:0] log_S1 = log[S_1];							// extra bits to allow for 3x expansion
+	wire [`M-1:0] S_1_cube = power[field_modulo(3*log_S1)];
 
 	assign single_bit_error_flag = S_1_cube ^ S_3;
 
@@ -154,7 +164,7 @@ module error_corrector(
 			if(input_valid && error_found && single_bit_error_flag != 4'd0) begin
 				stall <= 1;
 				term1 <= S_1;
-				term2 <= alpha.power[field_modulo(2*log_S1)];
+				term2 <= power[field_modulo(2*log_S1)];
 				counter <= 0;
 			end
 			else if(search_complete) begin		// If counter runs past the codeword length, or if the relp matches.
@@ -163,8 +173,8 @@ module error_corrector(
 			else if(stall) begin
 				counter <= counter + 1;
 
-				term1 <= alpha.power[field_modulo(alpha.log[term1] + 2)];
-				term2 <= alpha.power[field_modulo(alpha.log[term2] + 1)];
+				term1 <= power[field_modulo(log[term1] + 2)];
+				term2 <= power[field_modulo(log[term2] + 1)];
 			end
 		end
 	end
@@ -179,7 +189,7 @@ module error_corrector(
 			// if search is complete, update outputs. Values of chien_locs exceeding `N will indicate failures, regardless of the cause: counter_overflow or pair out of vector. 
 			if(search_complete) begin										
 				chien_loc_0 <= counter;
-				chien_loc_1 <= alpha.log[alpha.power[counter] ^ S_1];
+				chien_loc_1 <= log[power[counter] ^ S_1];
 			end
 		end
 	end
@@ -205,11 +215,13 @@ module BCH_decoder(
 	// syndrome calculator wires
 	wire syncalc_output_valid;
 	wire syncalc_error_found;
+    wire syncalc_busy;
 	wire [`M-1:0] S_1, S_3;
 
 	serial_syndrome_calculator syndrome_calculator(
 		.data_out_valid(syncalc_output_valid),
 		.error_found(syncalc_error_found),
+        .busy(syncalc_busy),
 		.S_1(S_1), .S_3(S_3),
 		.rx_data(rx_data),
 		.restart(rx_data_valid),
@@ -274,7 +286,7 @@ module testbench;
 		#1 reset = 0;
 		
 		#1 en = 1;
-		#1 rx_data = 15'b101010000001000 ^ ((1 << 11) | (1 << 11));
+		#1 rx_data = 15'b101010000100000 ^ ((1 << 11) | (1 << 11));
 		#1 restart = 1;
 
 		#1 clk = 1;
