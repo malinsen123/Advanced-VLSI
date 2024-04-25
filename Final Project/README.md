@@ -57,3 +57,12 @@ The last step in decoding BCH codes is to find the error location numbers. These
 ![Error Locations](./Chien_search.png)
 
 As shown in the figure, the error locations are found using the Chien search algorithm, which evaluates the error locator polynomial σ(x) at the elements of GF(2^m) to determine the error locations. The algorithm will find and correct up to t errors in the received codeword, allowing for the recovery of the original message.
+
+### Encoder simulation
+
+![Encoder Simulation](./encoder_example.png)
+
+As shown in the figure, to simplify the simulation, the encoder is tune to encode a (15, 7) BCH code. The input data is a 7-bit binary number, and the output is a 15-bit codeword. The encoder is tested using a testbench file that generates random input data and verifies the correctness of the encoded output. The simulation results demonstrate the successful encoding of the input data using the BCH code. As the information bits 0x48 are encoded to be 0x48f5.
+
+
+### Decoder simulation

@@ -1,30 +1,29 @@
-`define W `N-`dropped_MSB		// length of the coded message.	
-`define V `K-`dropped_MSB       // length of the information bits.
+`include "helper.sv"
 
 module serial_encoder(
-	input  wire [`V-1:0] infor_bits, 
-	output wire [`W-1:0] codeword_out,
+	input  wire [`K-1:0] infor_bits, 
+	output wire [`N-1:0] codeword_out,
 	output reg  busy,
 	output reg  output_valid,
-	input  wire kick_off,
+	input  wire restart,
 	input  wire en, clk, reset
 );
 	wire [`N-`K-0:0] generator = 9'b111010001;
 	reg  [`N-`K-1:0] LFSR;		// generator has 0 to N-K bits
-	reg  [`M-1 :0] counter;		// runs from 0 .. `V-1. The whole length of the message.
-	reg  [`V-1 :0] infor_bits_latched; // latched infor_bits
+	reg  [`M-1 :0] counter;		// runs from 0 .. `K-1. The whole length of the message.
+	reg  [`K-1 :0] infor_bits_latched; // latched infor_bits
 
 	wire last_input_sample = (counter == 0);			// while encoding is still underway.
 
 	always @(posedge clk) begin
 		if(reset) begin
 			{infor_bits_latched, output_valid, busy} <= 0;
-			counter <= `V-1;
+			counter <= `K-1;
 		end
 		else if(en) begin
-			if(kick_off) begin
+			if(restart) begin
 				infor_bits_latched <= infor_bits;
-				counter <= `V-1;
+				counter <= `K-1;
 				busy <= 1;
 			end
 			else if(busy) begin
@@ -43,7 +42,7 @@ module serial_encoder(
 		if(reset)
 			LFSR <= 0;
 		else if(en) begin
-			if(kick_off)
+			if(restart)
 				LFSR <= 0;
 			else if(busy) begin
 				if(LFSR[`N-`K-1] ^ infor_bits_latched[counter])
@@ -58,11 +57,11 @@ module serial_encoder(
 endmodule
 
 module parallel_encoder(
-	input  wire [`V-1:0] infor_bits,
-	output wire [`W-1:0] codeword_out,
+	input  wire [`K-1:0] infor_bits,
+	output wire [`N-1:0] codeword_out,
 	output wire busy,
 	output wire output_valid,
-	input  wire kick_off,
+	input  wire restart,
 	input  wire en, clk, reset
 );
 	integer i;
@@ -70,13 +69,13 @@ module parallel_encoder(
 
 	wire [`N-`K-0:0] generator = 9'b111010001;
 	reg  [`N-`K-1:0] LFSR;		// generator has 0 to N-K bits
-	wire [`V-1 :0] infor_bits_latched = infor_bits;
+	wire [`K-1 :0] infor_bits_latched = infor_bits;
 
 	// Serialized LFSR handle
 	always @(*) begin
 		LFSR = 0;
 
-		for(i=`V-1; i>=0; i-=1) begin
+		for(i=`K-1; i>=0; i-=1) begin
 			if(LFSR[`N-`K-1] ^ infor_bits_latched[i])
 				LFSR = generator[`N-`K-1:0] ^ {LFSR[`N-`K-2:0], 1'b0};
 			else
@@ -89,7 +88,7 @@ module parallel_encoder(
 	reg valid_PL [0:PIPELINE_DEPTH];
 
 	always @(*) pLFSR_PL[0] = LFSR;
-	always @(*) valid_PL[0] = kick_off;
+	always @(*) valid_PL[0] = restart;
 
 	always @(posedge clk) begin
 		for(i=1; i<=PIPELINE_DEPTH; i+=1) begin
@@ -109,10 +108,10 @@ module parallel_encoder(
 endmodule
 
 module testbench;
-	reg  [`V-1:0] infor_bits;
-	wire [`W-1:0] codeword_out_serial, codeword_out_parallel;
+	reg  [`K-1:0] infor_bits;
+	wire [`N-1:0] codeword_out_serial, codeword_out_parallel;
 	wire output_valid_serial, output_valid_parallel;
-	reg  kick_off;
+	reg  restart;
 	reg  en, clk, reset;
 
 
@@ -120,7 +119,7 @@ module testbench;
 		.infor_bits(infor_bits),
 		.codeword_out(codeword_out_serial),
 		.output_valid(output_valid_serial),
-		.kick_off(kick_off),
+		.restart(restart),
 		.en(en), .clk(clk),
 		.reset(reset)
 	);
@@ -129,7 +128,7 @@ module testbench;
 		.infor_bits(infor_bits),
 		.codeword_out(codeword_out_parallel),
 		.output_valid(output_valid_parallel),
-		.kick_off(kick_off),
+		.restart(restart),
 		.en(en), .clk(clk),
 		.reset(reset)
 	);
@@ -145,12 +144,12 @@ module testbench;
 		
 		#1 en = 1;
 		#1 infor_bits = 7'b1000000;
-		#1 kick_off = 1;
+		#1 restart = 1;
 
 		#1 clk = 1;
 		#1 clk = 0;
 
-		#1 kick_off = 0;
+		#1 restart = 0;
 
 		repeat(20)
 			#1 clk = ~clk;

@@ -1,27 +1,25 @@
-`define W `N-`dropped_MSB		// length of the code word	
-`define V `K-`dropped_MSB		// length of the  information bits
-
+`include "helper.sv"
 
 module serial_syndrome_calculator(
 	output reg  data_out_valid,
 	output wire error_found,
 	output reg  busy,
 	output reg  [`M-1:0] S_1, S_3,
-	input  wire [`W-1:0] rx_data,
-	input  wire kick_off,
+	input  wire [`N-1:0] rx_data,
+	input  wire restart,
 	input  wire en, clk, reset
 );
 	reg [`M+1:0] counter;
-	reg [`W-1:0] rx_data_latch;
+	reg [`N-1:0] rx_data_latch;
 
-	wire last_input_sample = (counter == `W-1);		// 0 .. 14 
+	wire last_input_sample = (counter == `N-1);		// 0 .. 14 
 
 	// Sequential syndrome calculator
 	always @(posedge clk) begin
 		if(reset)
 			{counter, busy, S_1, S_3, rx_data_latch, data_out_valid} <= 0;
 		else if(en) begin
-			if(kick_off) begin
+			if(restart) begin
 				busy <= 1'b1;
 				
 				counter <= 'd0;
@@ -51,7 +49,7 @@ module parallel_syndrome_calculator(
 	output wire data_out_valid,
 	output wire error_found,
 	output wire [`M-1:0] S_1, S_3,
-	input  wire [`W-1:0] rx_data,
+	input  wire [`N-1:0] rx_data,
 	input  wire rx_data_valid,
 	input  wire en, clk, reset
 );
@@ -65,7 +63,7 @@ module parallel_syndrome_calculator(
 		S_1_acc = 4'd0;
 		S_3_acc = 4'd0;
 
-		for(i=0; i<`W; i+=1) begin			
+		for(i=0; i<`N; i+=1) begin			
 			S_1_acc = S_1_acc ^ (alpha.power[i] & {4{rx_data[i]}});						// extend
 			S_3_acc = S_3_acc ^ (alpha.power[field_modulo(3*i)] & {4{rx_data[i]}});		// extend
 		end
@@ -109,7 +107,7 @@ module error_corrector(
 	output reg  output_valid,
 	output wire invalid_correction_detected,							// No guarantees this will detect every invalid correction.
 	output reg  [`M-1:0] single_bit_error_flag,
-	output reg  [`W-1:0] correction_mask,
+	output reg  [`N-1:0] correction_mask,
 	input  wire [`M-1:0] S_1, S_3,
 	input  wire input_valid, error_found,
 	input  wire en, clk, reset
@@ -144,7 +142,7 @@ module error_corrector(
 	reg  [`M+1:0] counter;
 
 	wire search_passed = stall && (relp == 0);
-	wire search_failed = stall && (counter == `W); 			// means counter overflow at 15th sample
+	wire search_failed = stall && (counter == `N); 			// means counter overflow at 15th sample
 	
 	wire search_complete = search_failed | search_passed;		// runs from 0 .. 15, or whenever the correction condition is met.
 
@@ -178,7 +176,7 @@ module error_corrector(
 		else if(en) begin
 			chien_search_complete <= search_complete;
 
-			// if search is complete, update outputs. Values of chien_locs exceeding `W will indicate failures, regardless of the cause: counter_overflow or pair out of vector. 
+			// if search is complete, update outputs. Values of chien_locs exceeding `N will indicate failures, regardless of the cause: counter_overflow or pair out of vector. 
 			if(search_complete) begin										
 				chien_loc_0 <= counter;
 				chien_loc_1 <= alpha.log[alpha.power[counter] ^ S_1];
@@ -188,8 +186,8 @@ module error_corrector(
 
 	// Indicate possible failures.
 	assign invalid_correction_detected = chien_search_complete && (
-											(chien_loc_0 >= `W) ||
-											(chien_loc_1 >= `W)
+											(chien_loc_0 >= `N) ||
+											(chien_loc_1 >= `N)
 										);
 endmodule
 
@@ -197,9 +195,9 @@ endmodule
 module BCH_decoder(
 	output wire decoder_busy,
 	output wire decode_failure,
-	output wire [`W-1:0] corrected_data,
+	output wire [`N-1:0] corrected_data,
 	output wire output_valid,
-	input  wire [`W-1:0] rx_data,
+	input  wire [`N-1:0] rx_data,
 	input  wire rx_data_valid,
 	// misc. signals
 	input  wire en, clk, reset
@@ -214,12 +212,12 @@ module BCH_decoder(
 		.error_found(syncalc_error_found),
 		.S_1(S_1), .S_3(S_3),
 		.rx_data(rx_data),
-		.kick_off(rx_data_valid),
+		.restart(rx_data_valid),
 		.en(en), .clk(clk), .reset(reset)
 	);
 	
 	wire [`M-1:0] single_bit_error_flag;
-	wire [`W-1:0] correction_mask;
+	wire [`N-1:0] correction_mask;
 
 	wire errcorr_output_valid;
 	wire errcorr_busy, errcorr_invalid_correction;
@@ -244,10 +242,10 @@ module BCH_decoder(
 endmodule
 
 module testbench;
-	reg  [`W-1:0] rx_data;
-	wire [`W-1:0] codeword_out_serial, codeword_out_parallel;
+	reg  [`N-1:0] rx_data;
+	wire [`N-1:0] codeword_out_serial, codeword_out_parallel;
 	wire output_valid_serial, output_valid_parallel;
-	reg  kick_off;
+	reg  restart;
 
 	wire decode_failure, busy;
 
@@ -260,7 +258,7 @@ module testbench;
 		.corrected_data(codeword_out_serial),
 		.output_valid(output_valid_serial),
 		.rx_data(rx_data),
-		.rx_data_valid(kick_off),
+		.rx_data_valid(restart),
 		// misc. signals
 		.en(en), .clk(clk),
 		.reset(reset)
@@ -269,20 +267,20 @@ module testbench;
 
 	initial begin
 
-		#0 en = 0; clk = 0; reset = 0; kick_off = 0; rx_data = 0;
+		#0 en = 0; clk = 0; reset = 0; restart = 0; rx_data = 0;
 		#1 reset = 1;
 		#1 clk = 1;
 		#1 clk = 0;
 		#1 reset = 0;
 		
 		#1 en = 1;
-		#1 rx_data = 15'b111010001000000 ^ ((1 << 11) | (1 << 11));
-		#1 kick_off = 1;
+		#1 rx_data = 15'b101010000001000 ^ ((1 << 11) | (1 << 11));
+		#1 restart = 1;
 
 		#1 clk = 1;
 		#1 clk = 0;
 
-		#1 kick_off = 0;
+		#1 restart = 0;
 
 		repeat(40)
 			#1 clk = ~clk;
