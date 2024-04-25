@@ -1,5 +1,3 @@
-
-
 `define W `N-`dropped_MSB		// length of the code word	
 `define V `K-`dropped_MSB		// length of the  information bits
 
