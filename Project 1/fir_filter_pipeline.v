@@ -12,9 +12,9 @@ localparam N_HALF = N_TAPS / 2; // Assuming N_TAPS is even for simplicity
 // Filter coefficients
 wire signed [31:0] h [N_TAPS-1:0];
 // Initialize your coefficients here as before
-assign h[0] = 32'sd0;
-assign h[1] = 32'sd0;
-assign h[2] = 32'sd2;
+assign h[0] = 32'sd1;
+assign h[1] = 32'sd2;
+assign h[2] = 32'sd4;
 assign h[3] = 32'sd0;
 assign h[4] = -32'sd3;
 assign h[5] = -32'sd2;
@@ -126,40 +126,40 @@ always @(posedge clk or posedge reset) begin
     if (reset) begin
         // Reset logic
         for (i = 0; i < N_TAPS; i = i + 1) begin
-            shift_reg[i] <= 0;
+            shift_reg[i] = 0;
         end
         for (i = 0; i < N_HALF; i = i + 1) begin
-            stage1_out[i] <= 0;
+            stage1_out[i] = 0;
         end
-        y_out <= 0;
+        y_out = 0;
         y_out_next <= 0;
     end else begin
         // Shift the samples
         for (i = N_TAPS-1; i > 0; i = i - 1) begin
-            shift_reg[i] <= shift_reg[i-1];
+            shift_reg[i] = shift_reg[i-1];
         end
-        shift_reg[0] <= x_in;
+        shift_reg[0] = x_in;
 
         // Stage 1: Compute partial results for the first half
         for (i = 0; i < N_HALF; i = i + 1) begin
             if (i == 0) begin
-                stage1_out[i] <= h[i] * x_in;
+                stage1_out[i] = h[i] * x_in;
             end else begin
-                stage1_out[i] <= h[i] * shift_reg[i];
+                stage1_out[i] = h[i] * shift_reg[i];
             end
         end
 
         // Stage 2: Complete computation with the remaining coefficients and accumulate
-        y_out_next <= 0;
+        y_out_next = 0;
         for (i = 0; i < N_HALF; i = i + 1) begin
-            y_out_next <= y_out_next + stage1_out[i];
+            y_out_next = y_out_next + stage1_out[i];
         end
         for (i = N_HALF; i < N_TAPS; i = i + 1) begin
-            y_out_next <= y_out_next + (h[i] * shift_reg[i]);
+            y_out_next = y_out_next + (h[i] * shift_reg[i]);
         end
 
         // Update output in the last stage
-        y_out <= y_out_next;
+        y_out = y_out_next;
     end
 end
 

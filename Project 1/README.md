@@ -56,6 +56,12 @@ The direct form implementation of the FIR filter is shown in the file `fir_filte
 
 The ModelSim is used to simulate the filter. The simulation results are shown in Fig.4.
 
+
+![Simulation Results](./fig/single_example.png)
+Fig.4: Simulation results of the direct form FIR filter
+
+
+
 ### Pipelined Implementation
 The pipelined implementation of the FIR filter is a more efficient realization of the filter equation. The filter diagram is shown in Fig.5.
 
@@ -66,3 +72,5 @@ Fig.5: Pipelined FIR filter diagram
 The pipelined implementation of the FIR filter is shown in the file `fir_filter_pipeline.v`. The filter is implemented using multiple always blocks, and the filter coefficients are hard-coded in the file. The filter is tested using a testbench file `tb_fir_filter_pipeline.v`. The testbench file generates a test signal and applies it to the filter. The output of the filter is compared with the expected output to verify the correctness of the filter.
 
 The ModelSim is used to simulate the filter. The simulation results are shown in Fig.6.
+
+![Simulation Results](./fig/pipe_example.png)

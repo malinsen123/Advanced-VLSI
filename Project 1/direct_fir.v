@@ -9,9 +9,9 @@ module fir_filter (
 localparam N_TAPS = 100;
 wire signed [31:0] h [N_TAPS-1:0];
 
-assign h[0] = 32'sd0;
-assign h[1] = 32'sd0;
-assign h[2] = 32'sd2;
+assign h[0] = 32'sd1;
+assign h[1] = 32'sd2;
+assign h[2] = 32'sd4;
 assign h[3] = 32'sd0;
 assign h[4] = -32'sd3;
 assign h[5] = -32'sd2;
@@ -113,6 +113,9 @@ assign h[99] = 32'sd0;
 
 // Sample shift register
 reg signed [31:0] shift_reg[N_TAPS-1:0];
+reg signed [31:0] temp_y_out;
+
+
 
 integer i;
 
@@ -126,14 +129,20 @@ always @(posedge clk or posedge reset) begin
         y_out <= 0;
     end
     else begin
-        // Shift the samples and compute the output in a single loop for simplicity
-        y_out <= 0;
+	// Shift the input sample through the register
         for (i = N_TAPS-1; i > 0; i = i - 1) begin
-            shift_reg[i] <= shift_reg[i-1]; // Shift the samples
-            y_out <= y_out + (h[i] * shift_reg[i]); // Accumulate the result
+            shift_reg[i] <= shift_reg[i - 1];
         end
-        shift_reg[0] <= x_in; // Input the new sample
-        y_out <= y_out + (h[0] * x_in); // Add contribution from the newest sample
+	shift_reg[0] <= x_in; // Input the new sampl
+        temp_y_out <= 0;
+        for (i = 0; i < N_TAPS; i = i +1) begin
+            //shift_reg[i] <= shift_reg[i-1]; // Shift the samples
+            temp_y_out = temp_y_out + (h[i] * shift_reg[i]); // Accumulate the result
+        end
+
+	y_out <= temp_y_out;
+        //shift_reg[0] <= x_in; // Input the new sample
+        //y_out <= y_out + (h[0] * x_in); // Add contribution from the newest sample
     end
 end
 
